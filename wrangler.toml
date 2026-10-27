@@ -5,7 +5,7 @@ pages_build_output_dir = "public"
 [[d1_databases]]
 binding = "DB"
 database_name = "mathurchat"
-database_id = "PASTE_YOUR_D1_ID_HERE"
+database_id = "02071a42-598d-4489-b7bb-aca6e4e47cd1"
 
 [[r2_buckets]]
 binding = "FILES"
