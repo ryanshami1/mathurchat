@@ -1,0 +1,129 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MathurChat</title>
+<style>
+:root{--bg:#14141c;--rail:#0d0d13;--side:#1a1a24;--hi:#262634;--tx:#e8e8f0;--mu:#8b8ba3;--ac:#6d5efc;--gr:#3ddc97;--rd:#ff5d73}
+*{box-sizing:border-box}body{margin:0;height:100vh;font:15px/1.4 "Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--tx);display:flex}
+button,input{font:inherit;color:inherit}button{cursor:pointer}
+button:focus-visible,input:focus-visible,.i:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+#auth{margin:auto;width:320px;background:var(--side);padding:28px;border-radius:12px;display:flex;flex-direction:column;gap:10px}
+#auth h1{margin:0 0 6px;font-size:28px}#auth input{padding:10px;border-radius:6px;border:1px solid var(--hi);background:var(--bg)}
+.b{background:var(--ac);border:0;border-radius:6px;padding:9px 14px;font-weight:600}.b.g{background:var(--hi)}.err{color:var(--rd);min-height:1.2em}
+#app{display:none;width:100%}#rail{width:72px;background:var(--rail);padding:10px 0;display:flex;flex-direction:column;align-items:center;gap:8px;overflow:auto}
+.s{width:48px;height:48px;border-radius:50%;background:var(--hi);border:0;font-weight:700;transition:border-radius .15s,background .15s}
+.s:hover,.s.on{border-radius:14px;background:var(--ac)}
+#side{width:250px;background:var(--side);display:flex;flex-direction:column}#side h2{margin:0;padding:14px;font-size:15px;border-bottom:1px solid var(--rail)}
+#sl{flex:1;overflow:auto;padding:8px}.i{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;color:var(--mu);cursor:pointer;justify-content:space-between}
+.i:hover,.i.on{background:var(--hi);color:var(--tx)}.sec{font-size:12px;color:var(--mu);margin:12px 8px 4px;display:flex;justify-content:space-between}
+.sec button{background:none;border:0;color:var(--mu);font-size:16px;padding:0}.dot{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;flex:none}
+#me{padding:10px;background:var(--rail);display:flex;align-items:center;gap:8px;cursor:pointer}
+#main{flex:1;display:flex;flex-direction:column;min-width:0}#hd{padding:14px;border-bottom:1px solid var(--rail);font-weight:600;display:flex;justify-content:space-between}
+#ms{flex:1;overflow:auto;padding:12px 16px}.m{display:flex;gap:12px;margin:10px 0}.m b{margin-right:8px}.m small{color:var(--mu)}.m p{margin:2px 0;white-space:pre-wrap;word-break:break-word}
+#cf{padding:12px 16px;display:flex;gap:8px}#cf input{flex:1;padding:11px;border-radius:8px;border:0;background:var(--hi)}
+#mb{width:210px;background:var(--side);padding:8px;overflow:auto}
+#vp{padding:24px;text-align:center}#vp .dot{margin:6px auto;width:56px;height:56px}
+.dot{overflow:hidden}.dot img{width:100%;height:100%;object-fit:cover}.ma{display:none;gap:4px;margin-left:8px}.m:hover .ma,.m:focus-within .ma{display:inline-flex}.ma button{background:var(--hi);border:0;border-radius:4px;padding:0 6px}
+.re{display:inline-block;background:var(--hi);border:1px solid transparent;border-radius:10px;padding:0 7px;margin:4px 4px 0 0;cursor:pointer}.re.me{border-color:var(--ac)}.m .at{max-width:320px;max-height:240px;border-radius:8px;display:block;margin-top:4px}
+#vb{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:6px;background:var(--rail);padding:8px;border-radius:10px;z-index:5}#vg{position:fixed;top:60px;right:16px;display:flex;flex-direction:column;gap:6px;z-index:5}#vg video{width:240px;border-radius:8px;background:#000}
+dialog{background:var(--side);color:var(--tx);border:1px solid var(--hi);border-radius:12px;padding:20px;min-width:300px}dialog::backdrop{background:#0008}dialog label{display:block;margin:8px 0}dialog input:not([type=checkbox]){display:block;width:100%;padding:8px;margin-top:4px;border-radius:6px;border:1px solid var(--hi);background:var(--bg)}
+@media(max-width:800px){#mb{display:none}#side{width:180px}}
+</style></head><body>
+<form id="auth" onsubmit="return auth(event)"><h1>MathurChat</h1><input id="un" placeholder="Username" autocomplete="username"><input id="pw" type="password" placeholder="Password" autocomplete="current-password">
+<div class="err" id="ae"></div><button class="b" data-a="login">Log in</button><button class="b g" data-a="register">Create account</button></form>
+<div id="app"><div id="rail"></div><div id="side"><h2 id="sh"></h2><div id="sl"></div><div id="me" onclick="editProfile()"></div></div>
+<div id="main"><div id="hd"></div><div id="ms"></div><form id="cf" onsubmit="return send(event)"><label class="b g" title="Attach file">+<input type="file" id="cfile" hidden onchange="attach(this)"></label><input id="ci" placeholder="Message" autocomplete="off"></form></div><div id="mb"></div></div>
+<script>
+const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const api=(a,d={})=>fetch('/api/'+a,{method:'POST',headers:{'X-MC':'1'},body:JSON.stringify(d)}).then(r=>r.json());
+const dot=(n,c,a)=>`<span class="dot" style="background:${esc(c)}">${a?`<img src="${esc(a)}" alt="">`:esc((n||'?')[0].toUpperCase())}</span>`;
+const ICE=[{urls:'stun:stun.l.google.com:19302'}];
+let S={sid:0,srv:null,room:null,rt:null,last:0,mt:null},V={room:null,pcs:{},last:0,stream:null,t:null};
+async function auth(e){e.preventDefault();const a=e.submitter.dataset.a,r=await api(a,{username:$('un').value,pw:$('pw').value});
+ if(r.err)$('ae').textContent=r.err;else boot();return false}
+async function boot(){const r=await api('boot');if(r.err){$('auth').style.display='flex';$('app').style.display='none';return}
+ Object.assign(S,r);$('auth').style.display='none';$('app').style.display='flex';render();if(!S.room&&!S.sid)home()}
+function render(){
+ $('rail').innerHTML=`<button class="s ${S.sid?'':'on'}" onclick="home()" title="Home">MC</button>`+S.servers.map(s=>`<button class="s ${S.sid==s.id?'on':''}" onclick="openSrv(${s.id})" title="${esc(s.name)}">${esc(s.name.slice(0,2))}</button>`).join('')
+ +`<button class="s" onclick="mkServer()" title="Create server">+</button><button class="s" onclick="joinSrv()" title="Join with invite">&#8658;</button>`;
+ $('me').innerHTML=dot(S.me.name,S.me.color,S.me.avatar)+`<span>${esc(S.me.name)}</span>`;
+ let h='',m='';
+ if(!S.sid){$('sh').textContent='Home';const f=S.friends,id=S.me.id;
+  h+=`<div class="sec">Direct messages</div>`+S.dms.map(d=>`<div class="i ${S.room=='d'+d.id?'on':''}" tabindex=0 onclick="openRoom('d${d.id}','${'@'+esc(d.name).replace(/'/g,'')}','dm')"><span>${dot(d.name,d.color)} ${esc(d.name)}</span></div>`).join('')
+  +`<div class="sec">Friends <button onclick="addFriend()" title="Add friend">+</button></div>`+f.map(x=>x.ok?`<div class="i"><span>${dot(x.name,x.color)} ${esc(x.name)}</span><button class="b g" onclick="dm(${x.uid})">DM</button></div>`
+  :x.a==id?`<div class="i"><span>${esc(x.name)} (sent)</span><button class="b g" onclick="fresp(${x.uid},0)">x</button></div>`
+  :`<div class="i"><span>${esc(x.name)} wants to be friends</span><button class="b" onclick="fresp(${x.uid},1)">Accept</button></div>`).join('')}
+ else if(S.srv){const v=S.srv,c=v.can;$('sh').textContent=v.name;
+  const lst=t=>v.channels.filter(x=>x.type==t).map(x=>`<div class="i ${S.room=='c'+x.id?'on':''}" tabindex=0 onclick="openRoom('c${x.id}','${esc(x.name)}','${t}')"><span>${t=='text'?'#':'&#128266;'} ${esc(x.name)}</span>${c.channels?`<button class="sec" style="background:none;border:0;color:var(--rd)" onclick="event.stopPropagation();rmChan(${x.id})">x</button>`:''}</div>`).join('');
+  h+=`<div class="sec">Text channels ${c.channels?'<button onclick="mkChan(0)">+</button>':''}</div>`+lst('text')+`<div class="sec">Voice channels ${c.channels?'<button onclick="mkChan(1)">+</button>':''}</div>`+lst('voice')
+  +`<div class="sec">Invite code</div><div class="i"><code>${esc(v.invite)}</code></div>`+(c.roles?`<div class="sec">Roles <button onclick="mkRole()">+</button></div>`:'<div class="sec">Roles</div>')
+  +v.roles.map(r=>`<div class="i" style="color:${esc(r.color)}">${esc(r.name)}</div>`).join('')+(v.bans.length?`<div class="sec">Banned</div>`+v.bans.map(b=>`<div class="i"><span>${esc(b.name)}</span><button class="b g" onclick="unban(${b.id})">Unban</button></div>`).join(''):'')+`<div class="i" onclick="leave()" style="color:var(--rd)">Leave server</div>`;
+  m=`<div class="sec">Members &mdash; ${v.members.length}</div>`+v.members.map(u=>{const r=u.roles.slice(-1)[0];return `<div class="i" tabindex=0 title="${esc(u.bio||'')}" onclick="member(${u.id})">`+`<span>${dot(u.name,u.color,u.avatar)} <span style="color:${r?esc(r.color):'inherit'}">${esc(u.name)}</span></span></div>`}).join('')}
+ $('sl').innerHTML=h;$('mb').innerHTML=m}
+function home(){S.sid=0;S.srv=null;leaveRoom();$('hd').textContent='Home';$('ms').innerHTML='<p style="color:var(--mu)">Add friends or pick a conversation.</p>';render()}
+async function openSrv(id){S.sid=id;S.srv=await api('srv',{id});leaveRoom();$('hd').textContent=S.srv.name;$('ms').innerHTML='';render()}
+function leaveRoom(){clearInterval(S.mt);S.room=null;$('cf').style.display='none'}
+async function openRoom(room,name,type){leaveRoom();S.room=room;S.rt=type;S.sg='';$('hd').innerHTML=`<span>${type=='voice'?'&#128266; ':type=='dm'?'':'# '}${esc(name)}</span>`+(type=='dm'?`<button class="b g" onclick="vjoin('${room}')">&#128222; Call</button>`:'');
+ render();if(type=='voice'){$('ms').innerHTML=`<div id="vp"><p>Voice channel</p><div id="vpl"></div><button class="b" onclick="vjoin('${room}')">Join voice</button> <button class="b g" onclick="vleave()">Disconnect</button></div>`;return}
+ $('ms').innerHTML='';$('cf').style.display='flex';await poll();S.mt=setInterval(poll,2000);$('ci').focus()}
+const REM=['👍','❤️','😂'];
+async function poll(){if(!S.room)return;const rm=S.room,r=await api('msgs',{room:rm});if(rm!=S.room||!Array.isArray(r))return;
+ const sg=JSON.stringify(r);if(sg==S.sg)return;S.sg=sg;S.msgs={};const box=$('ms'),bot=box.scrollHeight-box.scrollTop-box.clientHeight<80||!box.children.length;
+ box.innerHTML=r.map(x=>{S.msgs[x.id]=x;const mod=x.user==S.me.id||(S.srv&&S.srv.can.kick);
+  const f=x.file?(/\.(png|jpe?g|gif|webp)$/.test(x.file)?`<img class="at" src="${esc(x.file)}" alt="">`:/\.(mp4|webm)$/.test(x.file)?`<video class="at" controls src="${esc(x.file)}"></video>`:/\.(mp3|ogg|wav)$/.test(x.file)?`<audio controls src="${esc(x.file)}"></audio>`:`<a href="${esc(x.file)}" target="_blank" rel="noopener">Attachment</a>`):'';
+  return `<div class="m">${dot(x.name,x.color,x.avatar)}<div><b style="color:${esc(x.color)}">${esc(x.name)}</b><small>${new Date(x.ts*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}${x.edited?' (edited)':''}</small>
+  <span class="ma">${REM.map(e=>`<button onclick="react(${x.id},'${e}')">${e}</button>`).join('')}${x.user==S.me.id?`<button onclick="editMsg(${x.id})">Edit</button>`:''}${mod?`<button onclick="rmMsg(${x.id})">Delete</button>`:''}</span>
+  <p>${esc(x.body)}</p>${f}<div>${x.re.map(e=>`<span class="re ${e.me?'me':''}" onclick="react(${x.id},'${e.emo}')">${e.emo} ${e.n}</span>`).join('')}</div></div></div>`}).join('');
+ if(bot)box.scrollTop=box.scrollHeight}
+async function send(e,file){if(e)e.preventDefault();const b=$('ci').value;if(!b.trim()&&!file)return false;$('ci').value='';const r=await api('send',{room:S.room,body:b,file});if(r.err)alert(r.err);poll();return false}
+async function up(f){const d=new FormData();d.append('f',f);const r=await fetch('/api/upload',{method:'POST',headers:{'X-MC':'1'},body:d}).then(r=>r.json());if(r.err)alert(r.err);return r.file}
+async function attach(i){const f=i.files[0];i.value='';if(!f||!S.room)return;const p=await up(f);if(p)send(null,p)}
+async function react(id,emo){await api('react',{id,emo});poll()}
+async function editMsg(id){const b=prompt('Edit message',S.msgs[id].body);if(b&&b.trim()){await api('edit',{id,body:b});poll()}}
+async function rmMsg(id){if(confirm('Delete message?')){await api('rmmsg',{id});poll()}}
+async function unban(id){await api('unban',{server:S.sid,user:id});openSrv(S.sid)}
+async function mkServer(){const n=prompt('Server name');if(!n)return;const r=await api('mkserver',{name:n});await boot();openSrv(r.id)}
+async function joinSrv(){const c=prompt('Invite code');if(!c)return;const r=await api('join',{code:c});if(r.err)return alert(r.err);await boot();openSrv(r.id)}
+async function leave(){if(!confirm('Leave this server?'))return;await api('leave',{id:S.sid});await boot();home()}
+async function mkChan(v){const n=prompt(v?'Voice channel name':'Text channel name');if(!n)return;const r=await api('mkchan',{server:S.sid,name:n,type:v?'voice':'text'});if(r.err)alert(r.err);openSrv(S.sid)}
+async function rmChan(id){if(confirm('Delete channel?')){await api('rmchan',{id});openSrv(S.sid)}}
+function mkRole(){form('New role',[{k:'name',label:'Name'},{k:'color',label:'Color',type:'color',v:'#ff8800'},{k:'admin',label:'Administrator',type:'checkbox'},{k:'channels',label:'Manage channels',type:'checkbox'},{k:'roles',label:'Manage roles',type:'checkbox'},{k:'kick',label:'Kick and ban',type:'checkbox'},{k:'messages',label:'Manage messages',type:'checkbox'}],async f=>{
+ const bits={admin:1,channels:2,roles:4,kick:8,messages:16};let p=0;for(const k in bits)if(f.get(k))p|=bits[k];
+ const r=await api('mkrole',{server:S.sid,name:f.get('name')||'role',color:f.get('color'),perms:p});if(r.err)alert(r.err);openSrv(S.sid)})}
+async function member(id){const u=S.srv.members.find(x=>x.id==id),c=S.srv.can;let t=`${u.name}\n${u.bio||''}\nRoles: ${u.roles.map(r=>r.name).join(', ')||'none'}`;
+ if(id!=S.me.id){const a=prompt(t+`\n\nType: "dm"${c.roles?', a role name to toggle':''}${c.kick?', "kick" or "ban"':''}`);if(!a)return;
+  if(a=='dm')return dm(id);if((a=='kick'||a=='ban')&&c.kick)await api(a,{server:S.sid,user:id});
+  else{const r=S.srv.roles.find(x=>x.name==a);if(r&&c.roles)await api('togrole',{role:r.id,user:id})}openSrv(S.sid)}else alert(t)}
+async function addFriend(){const n=prompt('Username');if(!n)return;const r=await api('addfriend',{username:n});if(r.err)alert(r.err);boot()}
+async function fresp(uid,accept){await api('fresp',{uid,accept});boot()}
+async function dm(uid){const r=await api('opendm',{uid});await boot();const d=S.dms.find(x=>x.id==r.id);S.sid=0;S.srv=null;openRoom('d'+r.id,'@'+d.name,'dm')}
+function form(title,fields,ok){const d=document.createElement('dialog');d.innerHTML=`<form method="dialog"><h3>${esc(title)}</h3>`+fields.map(f=>f.type=='checkbox'?`<label><input type="checkbox" name="${f.k}"> ${esc(f.label)}</label>`:`<label>${esc(f.label)}<input name="${f.k}" type="${f.type||'text'}" ${f.type=='file'?'accept="image/*"':`value="${esc(f.v||'')}"`}></label>`).join('')+`<div><button class="b" value="ok">Save</button> <button class="b g" value="x" formnovalidate>Cancel</button></div></form>`;
+ document.body.appendChild(d);d.showModal();d.onclose=async()=>{if(d.returnValue=='ok')await ok(new FormData(d.querySelector('form')));d.remove()}}
+function editProfile(){form('Edit profile',[{k:'name',label:'Display name',v:S.me.name},{k:'bio',label:'Bio',v:S.me.bio},{k:'color',label:'Profile color',type:'color',v:S.me.color},{k:'avatar',label:'Avatar image',type:'file'}],async f=>{
+ const a=f.get('avatar'),av=a&&a.size?await up(a):null;await api('profile',{name:f.get('name'),bio:f.get('bio'),color:f.get('color'),avatar:av});boot()})}
+// ---- voice (WebRTC mesh; signaling via PHP polling) ----
+async function vjoin(room){try{await vleave();V.stream=await navigator.mediaDevices.getUserMedia({audio:true})}catch(e){return alert('Microphone access is needed for voice.')}
+ V.room=room;V.last=0;await api('vjoin',{room});bar();V.t=setInterval(vpoll,1000);vpoll()}
+async function vleave(){clearInterval(V.t);if(V.vs){V.vs.getTracks().forEach(t=>t.stop());V.vs=null}if(V.room)api('vleave',{room:V.room});Object.values(V.pcs).forEach(p=>p.close());V.pcs={};document.querySelectorAll('audio[id^=a]').forEach(a=>a.remove());
+ if(V.stream)V.stream.getTracks().forEach(t=>t.stop());V.stream=null;V.room=null;V.deaf=false;bar();if($('vpl'))$('vpl').innerHTML=''}
+const sig=(to,d)=>api('vsig',{room:V.room,to,data:JSON.stringify(d)});
+function bar(){let b=$('vb');if(!V.room){b&&b.remove();$('vg')&&$('vg').remove();return}
+ if(!b)document.body.insertAdjacentHTML('beforeend',`<div id="vb"><button class="b g" id="bm" onclick="mute()">Mute</button><button class="b g" id="bd" onclick="deaf()">Deafen</button><button class="b g" onclick="share('cam')">Camera</button><button class="b g" onclick="share('screen')">Share screen</button><button class="b" style="background:var(--rd)" onclick="vleave()">Leave</button></div><div id="vg"></div>`)}
+function mute(){const t=V.stream.getAudioTracks()[0];t.enabled=!t.enabled;$('bm').textContent=t.enabled?'Mute':'Unmute'}
+function deaf(){V.deaf=!V.deaf;document.querySelectorAll('audio[id^=a]').forEach(a=>a.muted=V.deaf);$('bd').textContent=V.deaf?'Undeafen':'Deafen'}
+const reneg=async p=>{const pc=V.pcs[p];await pc.setLocalDescription(await pc.createOffer());sig(p,{d:pc.localDescription})};
+async function stopShare(){if(!V.vs)return;const ts=V.vs.getTracks();V.vs=null;ts.forEach(t=>t.stop());
+ for(const p in V.pcs){V.pcs[p].getSenders().filter(s=>s.track&&ts.includes(s.track)).forEach(s=>V.pcs[p].removeTrack(s));await reneg(p)}const m=$('v'+S.me.id);m&&m.remove()}
+async function share(k){try{const s=k=='cam'?await navigator.mediaDevices.getUserMedia({video:true}):await navigator.mediaDevices.getDisplayMedia({video:true});
+ await stopShare();V.vs=s;s.getVideoTracks()[0].onended=stopShare;const v=document.createElement('video');v.id='v'+S.me.id;v.autoplay=true;v.muted=true;v.srcObject=s;$('vg').appendChild(v);
+ for(const p in V.pcs){s.getTracks().forEach(t=>V.pcs[p].addTrack(t,s));await reneg(p)}}catch(e){alert('Could not start video.')}}
+function mk(p){const pc=new RTCPeerConnection({iceServers:ICE});V.stream.getTracks().forEach(t=>pc.addTrack(t,V.stream));if(V.vs)V.vs.getTracks().forEach(t=>pc.addTrack(t,V.vs));
+ pc.onicecandidate=e=>e.candidate&&sig(p,{c:e.candidate});
+ pc.ontrack=e=>{const k=e.track.kind,id=(k=='video'?'v':'a')+p;let a=$(id);if(!a){a=document.createElement(k=='video'?'video':'audio');a.id=id;a.autoplay=true;a.playsInline=true;a.muted=k=='video'||!!V.deaf;(k=='video'?$('vg'):document.body).appendChild(a)}a.srcObject=e.streams[0];if(k=='video')e.track.onmute=()=>a.remove()};return V.pcs[p]=pc}
+async function vpoll(){if(!V.room)return;const r=await api('vpoll',{room:V.room,last:V.last});if(!r.peers)return;const ids=r.peers.map(p=>p.id);
+ for(const p of ids)if(p!=S.me.id&&!V.pcs[p]&&S.me.id<p){const pc=mk(p);await pc.setLocalDescription(await pc.createOffer());sig(p,{d:pc.localDescription})}
+ for(const s of r.sigs){const m=JSON.parse(s.data);let pc=V.pcs[s.frm];
+  if(m.d){if(m.d.type=='offer'){pc=pc||mk(s.frm);await pc.setRemoteDescription(m.d);await pc.setLocalDescription(await pc.createAnswer());sig(s.frm,{d:pc.localDescription})}else if(pc)await pc.setRemoteDescription(m.d)}
+  else if(m.c&&pc)try{await pc.addIceCandidate(m.c)}catch(e){}}
+ for(const k in V.pcs)if(!ids.includes(+k)){V.pcs[k].close();delete V.pcs[k];['a','v'].forEach(x=>{const a=$(x+k);a&&a.remove()})}
+ if($('vpl'))$('vpl').innerHTML=r.peers.map(p=>dot(p.name,'#3ddc97')+esc(p.name)).join('<br>')}
+addEventListener('beforeunload',()=>{if(V.room)navigator.sendBeacon&&0});
+boot();
+</script></body></html>
